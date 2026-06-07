@@ -44,6 +44,33 @@ Update a booking's status as the doctor processes it:
 UPDATE appointments SET status = 'confirmed' WHERE id = $1;   -- or 'cancelled'
 ```
 
+## Double-booking protection (shared by both apps)
+
+`schema.sql` creates a partial unique index so one date + time slot can only be
+held by a single active (non-cancelled) appointment:
+
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_active_slot
+  ON appointments (appointment_date, appointment_time)
+  WHERE status <> 'cancelled';
+```
+
+Because the table is shared, this protects whichever app inserts second. Both the
+website's `/api/appointments` and the dashboard's create path must catch the
+violation (Postgres error code `23505`) and ask the user to pick another slot
+rather than returning a 500.
+
+To know which slots are free for a date, query active bookings:
+
+```sql
+SELECT appointment_time FROM appointments
+WHERE appointment_date = $1 AND status <> 'cancelled';
+```
+
+The website exposes this as `GET /api/appointments?date=YYYY-MM-DD`, which returns
+`{ ok: true, date, booked: ["04:30 PM", ...] }` — the booking form uses it to grey
+out taken slots.
+
 If the dashboard also uses `@neondatabase/serverless`:
 
 ```js

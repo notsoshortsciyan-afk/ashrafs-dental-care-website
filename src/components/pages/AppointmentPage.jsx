@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CalendarDays,
   Clock,
@@ -88,7 +88,49 @@ export function AppointmentPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  // Availability — which slots are already booked on the selected date.
+  const [bookedSlots, setBookedSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
   const calendarCells = buildCalendarGrid(year, month);
+
+  // The selected calendar day as a YYYY-MM-DD string (or "" if none picked).
+  const selectedDate = selectedDay
+    ? `${year}-${String(month + 1).padStart(2, "0")}-${String(selectedDay).padStart(2, "0")}`
+    : "";
+
+  // Fetch booked slots whenever the chosen date changes, so taken slots can be
+  // disabled. The unique constraint is still the real guard; this is just UX.
+  useEffect(() => {
+    if (!selectedDate) {
+      setBookedSlots([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingSlots(true);
+    fetch(`/api/appointments?date=${selectedDate}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        setBookedSlots(Array.isArray(data?.booked) ? data.booked : []);
+      })
+      .catch(() => {
+        if (!cancelled) setBookedSlots([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSlots(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate]);
+
+  // If the currently selected slot becomes booked, drop the selection.
+  useEffect(() => {
+    if (selectedSlot && bookedSlots.includes(selectedSlot)) {
+      setSelectedSlot("");
+    }
+  }, [bookedSlots, selectedSlot]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -107,10 +149,12 @@ export function AppointmentPage() {
       setError("Please enter a contact number.");
       return;
     }
+    if (!selectedSlot) {
+      setError("Please choose an available time slot.");
+      return;
+    }
 
-    const appointment_date = `${year}-${String(month + 1).padStart(2, "0")}-${String(
-      selectedDay
-    ).padStart(2, "0")}`;
+    const appointment_date = selectedDate;
 
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
@@ -138,6 +182,14 @@ export function AppointmentPage() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok || !data.ok) {
+        // Slot got taken between load and submit — refresh availability so the
+        // UI greys it out, and clear the now-invalid selection.
+        if (res.status === 409 || data.code === "SLOT_TAKEN") {
+          setBookedSlots((prev) =>
+            prev.includes(selectedSlot) ? prev : [...prev, selectedSlot]
+          );
+          setSelectedSlot("");
+        }
         throw new Error(data.error || "Something went wrong. Please try again.");
       }
 
@@ -269,20 +321,30 @@ export function AppointmentPage() {
               <div className="flex items-center gap-2 mb-5">
                 <Clock className="h-5 w-5 text-[#0D99E4]" strokeWidth={2} />
                 <h2 className="text-[15px] font-bold text-[#0D99E4]">Available Time Slots</h2>
+                {loadingSlots && (
+                  <span className="text-[11px] font-medium text-[#8894a6]">
+                    checking availability…
+                  </span>
+                )}
               </div>
 
               <div className="grid grid-cols-2 min-[480px]:grid-cols-4 gap-3">
                 {TIME_SLOTS.map((slot) => {
-                  const isActive = slot === selectedSlot;
+                  const isBooked = bookedSlots.includes(slot);
+                  const isActive = !isBooked && slot === selectedSlot;
                   return (
                     <button
                       key={slot}
-                      onClick={() => setSelectedSlot(slot)}
+                      onClick={() => !isBooked && setSelectedSlot(slot)}
+                      disabled={isBooked}
+                      aria-label={isBooked ? `${slot} — booked` : slot}
                       className={`
                         flex h-[42px] items-center justify-center rounded-xl text-[13px] font-semibold transition-all border
-                        ${isActive
-                          ? "bg-[#0D99E4] text-white border-[#0D99E4] shadow-md"
-                          : "bg-white text-[#0D99E4] border-[#d5dbe5] hover:border-[#0D99E4] hover:text-[#0D99E4]"
+                        ${isBooked
+                          ? "bg-[#eef1f6] text-[#a3afc0] border-[#e1e6ee] line-through cursor-not-allowed"
+                          : isActive
+                            ? "bg-[#0D99E4] text-white border-[#0D99E4] shadow-md"
+                            : "bg-white text-[#0D99E4] border-[#d5dbe5] hover:border-[#0D99E4] hover:text-[#0D99E4]"
                         }
                       `}
                     >

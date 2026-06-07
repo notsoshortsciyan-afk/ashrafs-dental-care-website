@@ -23,3 +23,12 @@ CREATE TABLE IF NOT EXISTS appointments (
 
 CREATE INDEX IF NOT EXISTS idx_appointments_date   ON appointments (appointment_date);
 CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments (status);
+
+-- A given date + time slot can only be held by ONE active (non-cancelled)
+-- appointment. This is the single guarantee that prevents double-booking
+-- across BOTH the website and the dashboard — they share this table, so the
+-- constraint protects whichever app inserts second. Cancelled rows are excluded
+-- so a freed slot can be re-booked.
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_active_slot
+  ON appointments (appointment_date, appointment_time)
+  WHERE status <> 'cancelled';

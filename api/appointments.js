@@ -1,13 +1,21 @@
 import { neon } from "@neondatabase/serverless";
 
 /* ───────────────────────────────────────────────────────────────
-   POST /api/appointments
-   Saves a booking from the website into the shared Neon database.
-   The dashboard reads the same `appointments` table directly.
+   /api/appointments
+   POST  → saves a booking from the website into the shared Neon database.
+   GET   → returns the slots already taken for a given date, so the UI can
+           disable them (?date=YYYY-MM-DD).
+   The dashboard reads/writes the same `appointments` table directly.
 
    Security:
    - DATABASE_URL lives only in the serverless env, never in the browser.
    - Values are passed as parameters (driver escapes them) → no SQL injection.
+
+   Double-booking:
+   - A partial unique index (uniq_active_slot) on (appointment_date,
+     appointment_time) WHERE status <> 'cancelled' is the atomic guarantee.
+   - We catch its violation (Postgres code 23505) and return a friendly message
+     instead of relying on a pre-check (which would race under concurrency).
    ─────────────────────────────────────────────────────────────── */
 
 const MAX_LENGTHS = {
@@ -26,8 +34,8 @@ function clean(value) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+  if (req.method !== "POST" && req.method !== "GET") {
+    res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ ok: false, error: "Method not allowed" });
   }
 
@@ -35,6 +43,34 @@ export default async function handler(req, res) {
     // Misconfiguration — log server-side, return a generic message.
     console.error("DATABASE_URL is not set");
     return res.status(500).json({ ok: false, error: "Server is not configured" });
+  }
+
+  // ── GET: availability for a date ────────────────────────────
+  // Returns the active (non-cancelled) slots already booked on ?date=YYYY-MM-DD
+  // so the booking form can disable them.
+  if (req.method === "GET") {
+    const date = clean(req.query?.date);
+    if (!date || !DATE_RE.test(date)) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "A valid date (YYYY-MM-DD) is required" });
+    }
+    try {
+      const sql = neon(process.env.DATABASE_URL);
+      const rows = await sql`
+        SELECT appointment_time
+        FROM appointments
+        WHERE appointment_date = ${date}
+          AND status <> 'cancelled'
+      `;
+      const booked = rows.map((r) => r.appointment_time);
+      return res.status(200).json({ ok: true, date, booked });
+    } catch (err) {
+      console.error("Failed to read availability:", err);
+      return res
+        .status(500)
+        .json({ ok: false, error: "Could not load availability." });
+    }
   }
 
   // Vercel parses JSON bodies automatically, but guard for string bodies too.
@@ -107,6 +143,15 @@ export default async function handler(req, res) {
 
     return res.status(201).json({ ok: true, id: row.id, created_at: row.created_at });
   } catch (err) {
+    // 23505 = unique_violation → the slot was taken between page load and submit
+    // (or by the dashboard). Tell the user to pick another, don't 500.
+    if (err?.code === "23505") {
+      return res.status(409).json({
+        ok: false,
+        error: "That time slot was just booked. Please choose another slot.",
+        code: "SLOT_TAKEN",
+      });
+    }
     // Never leak DB internals to the client.
     console.error("Failed to insert appointment:", err);
     return res.status(500).json({ ok: false, error: "Could not save appointment. Please try again." });
