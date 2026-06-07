@@ -76,7 +76,78 @@ export function AppointmentPage() {
   const [selectedDay, setSelectedDay] = useState(today.getDate());
   const [selectedSlot, setSelectedSlot] = useState("04:30 PM");
 
+  // Patient details (controlled inputs)
+  const [fullName, setFullName] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
+  const [email, setEmail] = useState("");
+  const [reason, setReason] = useState("");
+  const [website, setWebsite] = useState(""); // honeypot — must stay empty
+
+  // Submission state
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
   const calendarCells = buildCalendarGrid(year, month);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+
+    // ── Client-side guards (the API re-validates everything) ──
+    if (!selectedDay) {
+      setError("Please select a date for your visit.");
+      return;
+    }
+    if (!fullName.trim()) {
+      setError("Please enter your full name.");
+      return;
+    }
+    if (!contactNumber.trim()) {
+      setError("Please enter a contact number.");
+      return;
+    }
+
+    const appointment_date = `${year}-${String(month + 1).padStart(2, "0")}-${String(
+      selectedDay
+    ).padStart(2, "0")}`;
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    if (new Date(`${appointment_date}T00:00:00`) < startOfToday) {
+      setError("The selected date is in the past. Please pick an upcoming date.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: fullName.trim(),
+          contact_number: contactNumber.trim(),
+          email: email.trim(),
+          reason: reason.trim(),
+          appointment_date,
+          appointment_time: selectedSlot,
+          website, // honeypot
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Something went wrong. Please try again.");
+      }
+
+      setSuccess(true);
+    } catch (err) {
+      setError(err.message || "Could not submit your appointment. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   function prevMonth() {
     if (month === 0) {
@@ -230,7 +301,30 @@ export function AppointmentPage() {
               <h2 className="text-[15px] font-bold text-[#0D99E4]">Patient Details</h2>
             </div>
 
-            <form className="flex flex-col gap-4" onSubmit={(e) => e.preventDefault()}>
+            {success ? (
+              <div className="flex flex-col items-center justify-center text-center gap-3 py-10">
+                <CheckCircle2 className="h-14 w-14 text-[#0D99E4]" strokeWidth={2} />
+                <h3 className="text-[18px] font-bold text-[#0D99E4]">Appointment Requested!</h3>
+                <p className="text-[13px] text-[#3b4963] leading-relaxed">
+                  Thank you{fullName.trim() ? `, ${fullName.trim()}` : ""}. We&apos;ve received your
+                  booking for <span className="font-semibold">{selectedSlot}</span>. Our team will
+                  contact you shortly to confirm.
+                </p>
+              </div>
+            ) : (
+            <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+              {/* Honeypot — hidden from real users; bots fill it in */}
+              <input
+                type="text"
+                name="website"
+                tabIndex={-1}
+                autoComplete="off"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                className="hidden"
+                aria-hidden="true"
+              />
+
               {/* Full Name */}
               <div>
                 <label className="block text-[12px] font-semibold text-[#0D99E4] mb-1.5">
@@ -241,6 +335,8 @@ export function AppointmentPage() {
                   <input
                     type="text"
                     placeholder="John Doe"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
                     className="h-[42px] w-full rounded-xl border border-[#d5dbe5] bg-white pl-10 pr-4 text-[13px] text-[#0D99E4] placeholder:text-[#a3afc0] outline-none focus:border-[#0D99E4] focus:ring-1 focus:ring-[#0D99E4]/20 transition-colors"
                   />
                 </div>
@@ -256,6 +352,8 @@ export function AppointmentPage() {
                   <input
                     type="tel"
                     placeholder="+1 (555) 000-0000"
+                    value={contactNumber}
+                    onChange={(e) => setContactNumber(e.target.value)}
                     className="h-[42px] w-full rounded-xl border border-[#d5dbe5] bg-white pl-10 pr-4 text-[13px] text-[#0D99E4] placeholder:text-[#a3afc0] outline-none focus:border-[#0D99E4] focus:ring-1 focus:ring-[#0D99E4]/20 transition-colors"
                   />
                 </div>
@@ -271,6 +369,8 @@ export function AppointmentPage() {
                   <input
                     type="email"
                     placeholder="john@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="h-[42px] w-full rounded-xl border border-[#d5dbe5] bg-white pl-10 pr-4 text-[13px] text-[#0D99E4] placeholder:text-[#a3afc0] outline-none focus:border-[#0D99E4] focus:ring-1 focus:ring-[#0D99E4]/20 transition-colors"
                   />
                 </div>
@@ -286,6 +386,8 @@ export function AppointmentPage() {
                   <textarea
                     rows={3}
                     placeholder="Describe your symptoms or procedure needed..."
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
                     className="w-full rounded-xl border border-[#d5dbe5] bg-white pl-10 pr-4 py-2.5 text-[13px] text-[#0D99E4] placeholder:text-[#a3afc0] outline-none focus:border-[#0D99E4] focus:ring-1 focus:ring-[#0D99E4]/20 transition-colors resize-none"
                   />
                 </div>
@@ -301,15 +403,24 @@ export function AppointmentPage() {
                 </span>
               </div>
 
+              {/* Error message */}
+              {error && (
+                <p className="text-[12px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {error}
+                </p>
+              )}
+
               {/* Submit Button */}
               <button
                 type="submit"
-                className="mt-2 flex h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-[#0D99E4] text-white text-[15px] font-bold shadow-lg hover:bg-[#0D99E4] transition-colors"
+                disabled={submitting}
+                className="mt-2 flex h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-[#0D99E4] text-white text-[15px] font-bold shadow-lg hover:bg-[#0D99E4] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Confirm Appointment
-                <CheckCircle2 className="h-5 w-5" strokeWidth={2} />
+                {submitting ? "Submitting..." : "Confirm Appointment"}
+                {!submitting && <CheckCircle2 className="h-5 w-5" strokeWidth={2} />}
               </button>
             </form>
+            )}
           </div>
         </div>
 

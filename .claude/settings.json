@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm.cmd install *)",
+      "Bash(npm.cmd run *)",
+      "mcp__plugin_neon_neon__list_projects",
+      "mcp__plugin_neon_neon__describe_table_schema",
+      "mcp__plugin_neon_neon__run_sql",
+      "Bash(Select-String -Pattern \"\\\\.env\")",
+      "Bash(Select-String -Pattern \"env\")",
+      "Bash(git add *)"
+    ]
+  }
+}
