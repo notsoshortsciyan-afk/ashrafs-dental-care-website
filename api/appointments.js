@@ -64,6 +64,8 @@ export default async function handler(req, res) {
           AND status <> 'cancelled'
       `;
       const booked = rows.map((r) => r.appointment_time);
+      // Availability is polled live — never serve it stale from the browser/CDN.
+      res.setHeader("Cache-Control", "no-store");
       return res.status(200).json({ ok: true, date, booked });
     } catch (err) {
       console.error("Failed to read availability:", err);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   CalendarDays,
   Clock,
@@ -99,31 +99,53 @@ export function AppointmentPage() {
     ? `${year}-${String(month + 1).padStart(2, "0")}-${String(selectedDay).padStart(2, "0")}`
     : "";
 
-  // Fetch booked slots whenever the chosen date changes, so taken slots can be
-  // disabled. The unique constraint is still the real guard; this is just UX.
+  // Fetch the active (non-cancelled) bookings for a date and update the grid.
+  // Returns the booked array so callers (e.g. the pre-submit re-check) can act
+  // on the freshest data without waiting for a state flush.
+  const refreshAvailability = useCallback(async (date, signal) => {
+    const res = await fetch(`/api/appointments?date=${date}`, { signal });
+    const data = await res.json();
+    const booked = Array.isArray(data?.booked) ? data.booked : [];
+    setBookedSlots(booked);
+    return booked;
+  }, []);
+
+  // Keep availability live: fetch on date change, then poll every 8s so slots
+  // booked elsewhere (the dashboard, another visitor) grey out without a manual
+  // refresh. The unique constraint is still the real guard; this is just UX.
   useEffect(() => {
-    if (!selectedDate) {
+    if (!selectedDate || success) {
       setBookedSlots([]);
       return;
     }
-    let cancelled = false;
-    setLoadingSlots(true);
-    fetch(`/api/appointments?date=${selectedDate}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (cancelled) return;
-        setBookedSlots(Array.isArray(data?.booked) ? data.booked : []);
-      })
-      .catch(() => {
-        if (!cancelled) setBookedSlots([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingSlots(false);
+
+    let controller;
+    const tick = () => {
+      // Don't poll a backgrounded tab — we refetch the moment it's visible again.
+      if (document.hidden) return Promise.resolve();
+      controller?.abort();
+      controller = new AbortController();
+      return refreshAvailability(selectedDate, controller.signal).catch((err) => {
+        if (err?.name !== "AbortError") setBookedSlots([]);
       });
-    return () => {
-      cancelled = true;
     };
-  }, [selectedDate]);
+
+    setLoadingSlots(true);
+    tick().finally(() => setLoadingSlots(false));
+
+    const interval = setInterval(tick, 8000);
+    // A returning tab should reflect reality instantly, not after the next tick.
+    const onVisible = () => {
+      if (!document.hidden) tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      controller?.abort();
+    };
+  }, [selectedDate, success, refreshAvailability]);
 
   // If the currently selected slot becomes booked, drop the selection.
   useEffect(() => {
@@ -165,6 +187,23 @@ export function AppointmentPage() {
 
     setSubmitting(true);
     try {
+      // Re-check availability right before booking: if the slot was taken in the
+      // last few seconds (since the poll), catch it here instead of round-tripping
+      // a POST that the unique index would only reject with a 409.
+      try {
+        const fresh = await refreshAvailability(appointment_date);
+        if (fresh.includes(selectedSlot)) {
+          setSelectedSlot("");
+          throw new Error("That time slot was just booked. Please choose another slot.");
+        }
+      } catch (err) {
+        if (err?.name === "TypeError") {
+          // Network hiccup on the pre-check — let the POST (and its 409) be the guard.
+        } else {
+          throw err;
+        }
+      }
+
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
