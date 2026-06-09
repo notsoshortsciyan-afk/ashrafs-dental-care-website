@@ -288,11 +288,6 @@ export function ContactPage() {
 
           {/* Left Content */}
           <div className="flex items-start gap-4 md:gap-5 max-w-2xl">
-            <div className="mt-1 md:mt-[6px] shrink-0">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-[#FCA5A5] w-6 h-6 md:w-[26px] md:h-[26px]">
-                <path d="M12 4v16m-8-8h16m-11.314-5.657l11.314 11.314m0-11.314l-11.314 11.314" />
-              </svg>
-            </div>
             <div>
               <h2 className="text-[1.2rem] md:text-[1.4rem] font-bold text-white mb-2 md:mb-2.5">
                 Experiencing a Dental Emergency?

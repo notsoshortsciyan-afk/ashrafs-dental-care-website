@@ -28,7 +28,7 @@ const treatments = [
 
 export function TransformingSection() {
   return (
-    <section className="relative overflow-hidden bg-[#e8ebf2] py-24 md:py-32">
+    <section className="relative overflow-hidden bg-[#e8ebf2] pt-8 pb-8 md:pt-12 md:pb-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}

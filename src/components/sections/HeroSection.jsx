@@ -7,7 +7,7 @@ export function HeroSection() {
     <section id="home" className="relative overflow-hidden bg-[#e8ebf2]">
 
       {/* ── Background Band — docbg.png ── */}
-      <div className="absolute bottom-0 left-0 w-full h-[122px] z-0 pointer-events-none">
+      <div className="hidden md:block absolute bottom-0 left-0 w-full h-[122px] z-0 pointer-events-none">
         <img
           src="/ASSETS/ASSETS/docbg.png"
           alt=""
@@ -80,6 +80,16 @@ export function HeroSection() {
 
         {/* Top section: Headline beside doctor image */}
         <div className="relative w-full overflow-hidden">
+
+          {/* Mobile Background Band — docbg.png */}
+          <div className="absolute bottom-0 left-0 w-full h-[25%] min-[400px]:h-[28%] sm:h-[30%] z-0 pointer-events-none">
+            <img
+              src="/ASSETS/ASSETS/docbg.png"
+              alt=""
+              className="w-full h-full object-cover object-center"
+              aria-hidden="true"
+            />
+          </div>
 
           {/* Headline — left side, positioned higher to clear the laptop */}
           <div className="absolute left-4 sm:left-8 top-[20%] min-[400px]:top-[25%] z-20 pointer-events-none">

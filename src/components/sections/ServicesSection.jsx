@@ -2,19 +2,19 @@ export function ServicesSection() {
   return (
     <section
       id="services"
-      className="relative overflow-hidden bg-[#e8ebf2] py-20 lg:py-32 w-full flex items-center justify-center min-h-[750px]"
+      className="relative overflow-hidden bg-[#e8ebf2] pt-20 pb-8 lg:pt-32 lg:pb-4 w-full flex items-center justify-center"
     >
       <div className="relative w-full max-w-7xl mx-auto px-6 lg:px-12 flex flex-col items-center justify-center">
         
         {/* Title Section - positioned top-left on desktop */}
-        <div className="w-full text-center lg:text-left mb-12 lg:mb-0 lg:absolute lg:top-0 lg:left-0 xl:-left-8 z-30">
+        <div className="w-full text-center lg:text-left mb-6 md:mb-8 lg:mb-0 lg:absolute lg:top-0 lg:left-0 xl:-left-8 z-30">
           <h2 className="text-[3rem] sm:text-[3.5rem] lg:text-[4rem] xl:text-[4.5rem] font-black leading-none text-[#0D99E4] select-none tracking-tight">
             Our Services
           </h2>
         </div>
 
         {/* Diamond Cards Section - perfectly centered */}
-        <div className="w-full flex justify-center items-center relative h-[640px]">
+        <div className="w-full flex justify-center items-center relative h-[320px] min-[400px]:h-[380px] sm:h-[500px] md:h-[580px] lg:h-[640px]">
           
           {/* Responsive container scaling wrapper to prevent overflow/clipping on smaller viewports */}
           <div className="relative w-[800px] h-[560px] flex items-center justify-center scale-[0.5] min-[400px]:scale-[0.6] sm:scale-[0.8] md:scale-[0.9] lg:scale-[1.0] transition-transform duration-300 origin-center">
