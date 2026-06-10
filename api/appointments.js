@@ -47,7 +47,9 @@ export default async function handler(req, res) {
 
   // ── GET: availability for a date ────────────────────────────
   // Returns the active (non-cancelled) slots already booked on ?date=YYYY-MM-DD
-  // so the booking form can disable them.
+  // so the booking form can disable them. This intentionally ignores `source`, so
+  // dashboard "lock" rows (source='lock', status='confirmed') come back as booked
+  // too — that's how a clinic-locked slot shows as unavailable here, no extra code.
   if (req.method === "GET") {
     const date = clean(req.query?.date);
     if (!date || !DATE_RE.test(date)) {

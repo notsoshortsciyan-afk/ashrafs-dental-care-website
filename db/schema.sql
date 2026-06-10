@@ -17,9 +17,17 @@ CREATE TABLE IF NOT EXISTS appointments (
   appointment_date DATE        NOT NULL,
   appointment_time TEXT        NOT NULL,   -- e.g. "04:30 PM" (matches the website slots)
   status           TEXT        NOT NULL DEFAULT 'pending',  -- pending | confirmed | cancelled
-  source           TEXT        NOT NULL DEFAULT 'website',  -- website | manual
+  source           TEXT        NOT NULL DEFAULT 'website',  -- website | manual | lock
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Slot locks (source = 'lock')
+-- The dashboard can "lock" a slot by INSERTing a sentinel row with
+-- source='lock' and status='confirmed' (placeholder full_name/contact_number).
+-- Because it's a non-cancelled row, the availability query below already returns
+-- it as booked, so the slot is unavailable on this website with no extra logic;
+-- the uniq_active_slot index also stops a real booking from landing on it.
+-- Unlocking simply DELETEs that row. The website never creates 'lock' rows.
 
 CREATE INDEX IF NOT EXISTS idx_appointments_date   ON appointments (appointment_date);
 CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments (status);

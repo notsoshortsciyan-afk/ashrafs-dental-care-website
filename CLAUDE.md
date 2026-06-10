@@ -94,3 +94,9 @@ Modern, minimal dental clinic landing page for Ashrafs Dental Clinic, implemente
 
 - Vite starts successfully in the foreground with `npm.cmd run dev -- --host 127.0.0.1`.
 - Detached dev-server launch required unsandboxed execution to stay active on localhost.
+
+## Shared appointments & slot locks
+
+- Bookings made on `/appointment` ([api/appointments.js](api/appointments.js)) INSERT into a `appointments` table in Neon that is **shared** with the practice-management dashboard (separate repo). Schema: [db/schema.sql](db/schema.sql).
+- Availability (`GET /api/appointments?date=`) returns every **non-cancelled** row's `appointment_time` as "booked" and **ignores `source`**.
+- **Slot locks:** the dashboard can block a slot by writing a sentinel row with `source='lock'`, `status='confirmed'`. Because that row is non-cancelled, this site already shows the slot as unavailable — **no website code change is required**. The `uniq_active_slot` partial index also prevents a real booking from racing onto a locked slot (the existing 23505 → "just booked" path covers it). Unlocking deletes the row. This site never creates `lock` rows.
