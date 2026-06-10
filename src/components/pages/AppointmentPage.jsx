@@ -88,8 +88,9 @@ export function AppointmentPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  // Availability — which slots are already booked on the selected date.
-  const [bookedSlots, setBookedSlots] = useState([]);
+  // Availability — which slots the clinic has LOCKED on the selected date.
+  // A booking no longer makes a slot unavailable; only a clinic lock does.
+  const [unavailableSlots, setUnavailableSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
   const calendarCells = buildCalendarGrid(year, month);
@@ -99,23 +100,23 @@ export function AppointmentPage() {
     ? `${year}-${String(month + 1).padStart(2, "0")}-${String(selectedDay).padStart(2, "0")}`
     : "";
 
-  // Fetch the active (non-cancelled) bookings for a date and update the grid.
-  // Returns the booked array so callers (e.g. the pre-submit re-check) can act
-  // on the freshest data without waiting for a state flush.
+  // Fetch the locked (unavailable) slots for a date and update the grid. Returns
+  // the array so callers (e.g. the pre-submit re-check) can act on the freshest
+  // data without waiting for a state flush.
   const refreshAvailability = useCallback(async (date, signal) => {
     const res = await fetch(`/api/appointments?date=${date}`, { signal });
     const data = await res.json();
-    const booked = Array.isArray(data?.booked) ? data.booked : [];
-    setBookedSlots(booked);
-    return booked;
+    const unavailable = Array.isArray(data?.unavailable) ? data.unavailable : [];
+    setUnavailableSlots(unavailable);
+    return unavailable;
   }, []);
 
   // Keep availability live: fetch on date change, then poll every 8s so slots
-  // booked elsewhere (the dashboard, another visitor) grey out without a manual
-  // refresh. The unique constraint is still the real guard; this is just UX.
+  // locked elsewhere (the dashboard) grey out without a manual refresh. The
+  // server's lock check is still the real guard; this is just UX.
   useEffect(() => {
     if (!selectedDate || success) {
-      setBookedSlots([]);
+      setUnavailableSlots([]);
       return;
     }
 
@@ -126,7 +127,7 @@ export function AppointmentPage() {
       controller?.abort();
       controller = new AbortController();
       return refreshAvailability(selectedDate, controller.signal).catch((err) => {
-        if (err?.name !== "AbortError") setBookedSlots([]);
+        if (err?.name !== "AbortError") setUnavailableSlots([]);
       });
     };
 
@@ -147,12 +148,12 @@ export function AppointmentPage() {
     };
   }, [selectedDate, success, refreshAvailability]);
 
-  // If the currently selected slot becomes booked, drop the selection.
+  // If the currently selected slot gets locked, drop the selection.
   useEffect(() => {
-    if (selectedSlot && bookedSlots.includes(selectedSlot)) {
+    if (selectedSlot && unavailableSlots.includes(selectedSlot)) {
       setSelectedSlot("");
     }
-  }, [bookedSlots, selectedSlot]);
+  }, [unavailableSlots, selectedSlot]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -187,14 +188,14 @@ export function AppointmentPage() {
 
     setSubmitting(true);
     try {
-      // Re-check availability right before booking: if the slot was taken in the
+      // Re-check availability right before booking: if the slot was locked in the
       // last few seconds (since the poll), catch it here instead of round-tripping
-      // a POST that the unique index would only reject with a 409.
+      // a POST that the server would only reject with a 409.
       try {
         const fresh = await refreshAvailability(appointment_date);
         if (fresh.includes(selectedSlot)) {
           setSelectedSlot("");
-          throw new Error("That time slot was just booked. Please choose another slot.");
+          throw new Error("This time slot is no longer available. Please choose another slot.");
         }
       } catch (err) {
         if (err?.name === "TypeError") {
@@ -221,10 +222,10 @@ export function AppointmentPage() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok || !data.ok) {
-        // Slot got taken between load and submit — refresh availability so the
-        // UI greys it out, and clear the now-invalid selection.
-        if (res.status === 409 || data.code === "SLOT_TAKEN") {
-          setBookedSlots((prev) =>
+        // Slot got locked between load and submit — grey it out and clear the
+        // now-invalid selection.
+        if (res.status === 409 || data.code === "SLOT_LOCKED") {
+          setUnavailableSlots((prev) =>
             prev.includes(selectedSlot) ? prev : [...prev, selectedSlot]
           );
           setSelectedSlot("");
@@ -369,17 +370,17 @@ export function AppointmentPage() {
 
               <div className="grid grid-cols-2 min-[480px]:grid-cols-4 gap-3">
                 {TIME_SLOTS.map((slot) => {
-                  const isBooked = bookedSlots.includes(slot);
-                  const isActive = !isBooked && slot === selectedSlot;
+                  const isUnavailable = unavailableSlots.includes(slot);
+                  const isActive = !isUnavailable && slot === selectedSlot;
                   return (
                     <button
                       key={slot}
-                      onClick={() => !isBooked && setSelectedSlot(slot)}
-                      disabled={isBooked}
-                      aria-label={isBooked ? `${slot} — booked` : slot}
+                      onClick={() => !isUnavailable && setSelectedSlot(slot)}
+                      disabled={isUnavailable}
+                      aria-label={isUnavailable ? `${slot} — unavailable` : slot}
                       className={`
                         flex h-[42px] items-center justify-center rounded-xl text-[13px] font-semibold transition-all border
-                        ${isBooked
+                        ${isUnavailable
                           ? "bg-[#eef1f6] text-[#a3afc0] border-[#e1e6ee] line-through cursor-not-allowed"
                           : isActive
                             ? "bg-[#0D99E4] text-white border-[#0D99E4] shadow-md"

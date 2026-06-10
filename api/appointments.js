@@ -3,19 +3,20 @@ import { neon } from "@neondatabase/serverless";
 /* ───────────────────────────────────────────────────────────────
    /api/appointments
    POST  → saves a booking from the website into the shared Neon database.
-   GET   → returns the slots already taken for a given date, so the UI can
-           disable them (?date=YYYY-MM-DD).
+   GET   → returns the slots that are LOCKED for a given date, so the UI can
+           disable them (?date=YYYY-MM-DD). A booking does NOT disable a slot.
    The dashboard reads/writes the same `appointments` table directly.
 
    Security:
    - DATABASE_URL lives only in the serverless env, never in the browser.
    - Values are passed as parameters (driver escapes them) → no SQL injection.
 
-   Double-booking:
-   - A partial unique index (uniq_active_slot) on (appointment_date,
-     appointment_time) WHERE status <> 'cancelled' is the atomic guarantee.
-   - We catch its violation (Postgres code 23505) and return a friendly message
-     instead of relying on a pre-check (which would race under concurrency).
+   Overbooking model (slot locks):
+   - A booking no longer reserves a slot — patients may book the same time
+     repeatedly. Only a staff LOCK row (source='lock') makes a slot unavailable.
+   - A partial unique index (uniq_active_lock) keeps at most one active lock per
+     slot. POST guards each booking with an atomic NOT EXISTS lock check, so a
+     lock added mid-request still wins — no pre-check race.
    ─────────────────────────────────────────────────────────────── */
 
 const MAX_LENGTHS = {
@@ -46,10 +47,9 @@ export default async function handler(req, res) {
   }
 
   // ── GET: availability for a date ────────────────────────────
-  // Returns the active (non-cancelled) slots already booked on ?date=YYYY-MM-DD
-  // so the booking form can disable them. This intentionally ignores `source`, so
-  // dashboard "lock" rows (source='lock', status='confirmed') come back as booked
-  // too — that's how a clinic-locked slot shows as unavailable here, no extra code.
+  // Returns the LOCKED slots on ?date=YYYY-MM-DD (source='lock') so the booking
+  // form can disable them. A regular booking does NOT make a slot unavailable —
+  // patients may share a time; only a clinic lock blocks new bookings.
   if (req.method === "GET") {
     const date = clean(req.query?.date);
     if (!date || !DATE_RE.test(date)) {
@@ -63,12 +63,13 @@ export default async function handler(req, res) {
         SELECT appointment_time
         FROM appointments
         WHERE appointment_date = ${date}
+          AND source = 'lock'
           AND status <> 'cancelled'
       `;
-      const booked = rows.map((r) => r.appointment_time);
+      const unavailable = rows.map((r) => r.appointment_time);
       // Availability is polled live — never serve it stale from the browser/CDN.
       res.setHeader("Cache-Control", "no-store");
-      return res.status(200).json({ ok: true, date, booked });
+      return res.status(200).json({ ok: true, date, unavailable });
     } catch (err) {
       console.error("Failed to read availability:", err);
       return res
@@ -136,24 +137,44 @@ export default async function handler(req, res) {
   // ── Insert ──────────────────────────────────────────────────
   try {
     const sql = neon(process.env.DATABASE_URL);
-    const [row] = await sql`
+    // Insert only if the slot isn't locked by the clinic. Multiple bookings on the
+    // same slot are allowed — only a staff lock (source='lock') blocks booking. The
+    // NOT EXISTS guard runs in the same statement, so a lock added mid-request wins.
+    const rows = await sql`
       INSERT INTO appointments
         (full_name, contact_number, email, reason, appointment_date, appointment_time)
-      VALUES
-        (${full_name}, ${contact_number}, ${email || null}, ${reason || null},
-         ${appointment_date}, ${appointment_time})
+      SELECT
+        ${full_name}, ${contact_number}, ${email || null}, ${reason || null},
+        ${appointment_date}, ${appointment_time}
+      WHERE NOT EXISTS (
+        SELECT 1 FROM appointments
+        WHERE appointment_date = ${appointment_date}
+          AND appointment_time = ${appointment_time}
+          AND source = 'lock'
+          AND status <> 'cancelled'
+      )
       RETURNING id, created_at
     `;
 
+    if (rows.length === 0) {
+      // Nothing inserted → the slot is locked by the clinic.
+      return res.status(409).json({
+        ok: false,
+        error: "This time slot is no longer available. Please choose another slot.",
+        code: "SLOT_LOCKED",
+      });
+    }
+
+    const row = rows[0];
     return res.status(201).json({ ok: true, id: row.id, created_at: row.created_at });
   } catch (err) {
-    // 23505 = unique_violation → the slot was taken between page load and submit
-    // (or by the dashboard). Tell the user to pick another, don't 500.
+    // 23505 (unique_violation) can now only come from the lock index → treat it as
+    // a locked slot, not a 500.
     if (err?.code === "23505") {
       return res.status(409).json({
         ok: false,
-        error: "That time slot was just booked. Please choose another slot.",
-        code: "SLOT_TAKEN",
+        error: "This time slot is no longer available. Please choose another slot.",
+        code: "SLOT_LOCKED",
       });
     }
     // Never leak DB internals to the client.

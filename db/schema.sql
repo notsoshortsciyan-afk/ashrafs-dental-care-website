@@ -21,22 +21,22 @@ CREATE TABLE IF NOT EXISTS appointments (
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Slot locks (source = 'lock')
--- The dashboard can "lock" a slot by INSERTing a sentinel row with
--- source='lock' and status='confirmed' (placeholder full_name/contact_number).
--- Because it's a non-cancelled row, the availability query below already returns
--- it as booked, so the slot is unavailable on this website with no extra logic;
--- the uniq_active_slot index also stops a real booking from landing on it.
--- Unlocking simply DELETEs that row. The website never creates 'lock' rows.
+-- Slot locks (source = 'lock') — overbooking model
+-- A booking does NOT reserve a slot: patients may book the same time repeatedly.
+-- Only the dashboard "locking" a slot makes it unavailable — it INSERTs a sentinel
+-- row with source='lock', status='confirmed' (placeholder full_name/contact_number).
+-- The website's availability query returns ONLY these lock rows, and its POST
+-- refuses to insert a booking when a lock exists. Unlocking DELETEs the row.
+-- The website never creates 'lock' rows.
 
 CREATE INDEX IF NOT EXISTS idx_appointments_date   ON appointments (appointment_date);
 CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments (status);
 
--- A given date + time slot can only be held by ONE active (non-cancelled)
--- appointment. This is the single guarantee that prevents double-booking
--- across BOTH the website and the dashboard — they share this table, so the
--- constraint protects whichever app inserts second. Cancelled rows are excluded
--- so a freed slot can be re-booked.
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_active_slot
+-- At most ONE active lock per (date, slot). Bookings are intentionally NOT
+-- constrained — a slot can hold many bookings; only a staff lock reserves it, and
+-- a slot can carry just one active lock. Cancelled rows are excluded.
+-- (Earlier schemas had uniq_active_slot covering every non-cancelled row; this
+-- replaces it. To migrate a live DB: DROP INDEX IF EXISTS uniq_active_slot;)
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_active_lock
   ON appointments (appointment_date, appointment_time)
-  WHERE status <> 'cancelled';
+  WHERE source = 'lock' AND status <> 'cancelled';
