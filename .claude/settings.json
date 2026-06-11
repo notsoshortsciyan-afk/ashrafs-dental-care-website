@@ -8,7 +8,14 @@
       "mcp__plugin_neon_neon__run_sql",
       "Bash(Select-String -Pattern \"\\\\.env\")",
       "Bash(Select-String -Pattern \"env\")",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m '@ *)",
+      "Bash(git commit *)",
+      "Bash(git remote *)",
+      "Bash(vercel --version)",
+      "Bash(vercel whoami *)",
+      "Bash(git mv *)",
+      "Bash(git fetch *)"
     ]
   }
 }
