@@ -3,7 +3,7 @@ import { ScrollReveal } from "@/components/ui/ScrollReveal";
 
 export function ContactSection() {
   return (
-    <section className="bg-[#e8ebf2] pt-8 pb-32 md:pt-8 md:pb-32">
+    <section className="bg-[#e8ebf2] pt-8 pb-20 md:pt-8 md:pb-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">

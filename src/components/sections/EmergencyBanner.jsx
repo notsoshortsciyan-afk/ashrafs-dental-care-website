@@ -11,7 +11,7 @@ export function EmergencyBanner() {
             <h2 className="text-[1.35rem] md:text-[1.65rem] font-bold text-white mb-2 md:mb-2.5">
               Experiencing a Dental Emergency?
             </h2>
-            <p className="text-black text-sm md:text-[15px] leading-relaxed">
+            <p className="text-white/90 text-sm md:text-[15px] leading-relaxed">
               Severe pain, swelling, or a knocked-out tooth requires immediate attention. We offer same-day emergency appointments to relieve pain and save your smile.
             </p>
           </div>

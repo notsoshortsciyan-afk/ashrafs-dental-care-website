@@ -33,7 +33,7 @@ export function TransformingSection() {
         
         {/* Section Header */}
         <ScrollReveal className="mx-auto max-w-3xl text-center mb-16 md:mb-24">
-          <h2 className="text-4xl md:text-5xl font-bold text-[#0D99E4] tracking-tight mb-4">
+          <h2 className="text-4xl md:text-[2.75rem] font-bold text-[#0D99E4] tracking-tight mb-4">
             Transforming Smiles
           </h2>
           <p className="text-[15px] md:text-base text-[#64748B] leading-relaxed max-w-xl mx-auto">
@@ -138,7 +138,7 @@ function BeforeAfterCard({ title, description, beforeImg, afterImg }) {
         <div className="absolute bottom-4 left-4 bg-black/60 text-white text-[10px] md:text-[11px] font-semibold px-2.5 py-1 rounded pointer-events-none z-10">
           Before
         </div>
-        <div className="absolute bottom-4 right-4 bg-[#28508F] text-white text-[10px] md:text-[11px] font-semibold px-2.5 py-1 rounded pointer-events-none z-10">
+        <div className="absolute bottom-4 right-4 bg-[#0D99E4] text-white text-[10px] md:text-[11px] font-semibold px-2.5 py-1 rounded pointer-events-none z-10">
           After
         </div>
       </div>

@@ -10,7 +10,9 @@ const offsets = {
 
 /**
  * Lightweight scroll-triggered entrance animation wrapper.
- * Now configured to replay animations both when scrolling down AND up.
+ * Replays animations both when scrolling down AND up. The horizontal
+ * translate offsets of hidden elements are kept from widening the page
+ * by `overflow-x: clip` on html/body in globals.css.
  */
 export function ScrollReveal({
   children,

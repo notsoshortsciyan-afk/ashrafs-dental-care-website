@@ -56,7 +56,7 @@ export function ServicesSection() {
           {/* Responsive container scaling wrapper to prevent overflow/clipping on smaller viewports.
               Hovering pauses the Ferris-wheel rotation. */}
           <div
-            className="relative w-[800px] h-[560px] flex items-center justify-center scale-[0.5] min-[400px]:scale-[0.6] sm:scale-[0.8] md:scale-[0.9] lg:scale-[1.0] transition-transform duration-300 origin-center"
+            className="relative w-[800px] h-[560px] flex items-center justify-center scale-[0.45] min-[400px]:scale-[0.55] sm:scale-[0.8] md:scale-[0.9] lg:scale-[1.0] transition-transform duration-300 origin-center"
             onMouseEnter={() => { paused.current = true; }}
             onMouseLeave={() => { paused.current = false; }}
           >

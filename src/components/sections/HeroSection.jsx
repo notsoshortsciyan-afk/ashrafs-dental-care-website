@@ -22,7 +22,7 @@ export function HeroSection() {
       <div className="hidden md:flex relative mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 h-[650px] lg:h-[calc(100vh-80px)] lg:max-h-[1000px] items-center">
 
         {/* Headline */}
-        <div className="absolute left-4 sm:left-8 lg:left-0 xl:-left-4 top-[40%] -translate-y-1/2 z-0 pointer-events-none">
+        <div className="absolute left-4 sm:left-8 lg:left-6 xl:left-6 top-[40%] -translate-y-1/2 z-0 pointer-events-none">
           <h1 className="text-[4rem] lg:text-[4.5rem] xl:text-[5rem] font-black uppercase leading-[1.05] tracking-tight text-[#0D99E4] select-none text-left">
             Smile
             <span className="block">With</span>

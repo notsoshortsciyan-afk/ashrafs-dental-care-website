@@ -22,6 +22,7 @@ Modern, minimal dental clinic landing page for Ashrafs Dental Clinic, implemente
 - Added `scrollbar-hide` utility to `globals.css`.
 - Updated color palette of navbar, titles, circles, appointment buttons, and the emergency banner to sky blue (#0D99E4) per user request.
 - Verified clean production build after all landing page sections.
+- Visual audit pass (Playwright): ScrollReveal keeps its replay-on-scroll behavior (per user request) — the translateX offsets of hidden elements no longer cause a horizontal scrollbar on mobile because `overflow-x: clip` was added on html/body; also added `scroll-padding-top` for the sticky header; added favicon; reduced Services diamond scale below 400px so side cards no longer touch the viewport edge; gave the desktop hero headline a left margin; rewrote testimonials with three distinct patients and initials avatars (the old avatar images were wide clinic photos cropped into circles); emergency-banner body text black → white/90; normalized section heading sizes and the "After" pill color to brand blue; trimmed the oversized gap before the emergency banner.
 
 ## Folder Structure
 

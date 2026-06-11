@@ -4,28 +4,31 @@ import { ScrollReveal } from "@/components/ui/ScrollReveal";
 const testimonials = [
   {
     id: 1,
-    name: "Michael Rodriguez",
-    treatment: "General Checkup",
-    image: "/ASSETS/paitentreview.jpg",
-    text: "I've always been anxious about the dentist, but this clinic completely changed that. The staff is so welcoming and the environment is incredibly calming.",
+    name: "Tanvir Ahmed",
+    treatment: "Root Canal Treatment",
+    text: "I came in with severe pain and left the same day completely relieved. Dr. Ashraf explained every step before doing it, which made the whole procedure feel easy.",
     rating: 5,
   },
   {
     id: 2,
-    name: "Michael Rodriguez",
-    treatment: "General Checkup",
-    image: "/ASSETS/paitentreview2.jpg",
+    name: "Nusrat Jahan",
+    treatment: "Scaling & Polishing",
     text: "I've always been anxious about the dentist, but this clinic completely changed that. The staff is so welcoming and the environment is incredibly calming.",
     rating: 5,
   },
   {
     id: 3,
-    name: "Michael Rodriguez",
-    treatment: "General Checkup",
-    image: "/ASSETS/paitentreview3.jpg",
-    text: "I've always been anxious about the dentist, but this clinic completely changed that. The staff is so welcoming and the environment is incredibly calming.",
+    name: "Rafiqul Islam",
+    treatment: "Dental Crown",
+    text: "Excellent work on my crown — it matches my natural teeth perfectly. The clinic is clean, modern, and appointments always start on time.",
     rating: 5,
   },
+];
+
+const avatarColors = [
+  "bg-[#0D99E4]",
+  "bg-[#0B7BC0]",
+  "bg-[#38bdf8]",
 ];
 
 export function TestimonialsSection() {
@@ -50,7 +53,12 @@ export function TestimonialsSection() {
               <div className="bg-white rounded-[24px] p-8 shadow-sm hover:shadow-md transition-shadow h-full">
                 {/* User Info */}
                 <div className="flex items-center gap-4 mb-6">
-                  <img src={t.image} alt={t.name} className="w-14 h-14 rounded-full object-cover shadow-sm" />
+                  <div
+                    className={`flex w-14 h-14 shrink-0 items-center justify-center rounded-full ${avatarColors[i % avatarColors.length]} text-white text-lg font-bold shadow-sm`}
+                    aria-hidden="true"
+                  >
+                    {t.name.split(" ").map((part) => part[0]).join("")}
+                  </div>
                   <div>
                     <h3 className="text-[#0D99E4] font-bold text-sm md:text-base leading-tight">
                       {t.name}

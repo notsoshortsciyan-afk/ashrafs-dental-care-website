@@ -28,10 +28,16 @@
 
   html {
     scroll-behavior: smooth;
+    /* keep anchored sections clear of the 80px sticky header */
+    scroll-padding-top: 5.5rem;
+    /* guard against decorative elements bleeding past the viewport on mobile */
+    overflow-x: clip;
   }
 
   body {
     @apply bg-[#e8ebf2] font-sans text-foreground antialiased;
+    /* guard against decorative elements bleeding past the viewport on mobile */
+    overflow-x: clip;
   }
 
   img {
